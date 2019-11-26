@@ -2,6 +2,10 @@
 import sys
 import numpy as np
 
+# This is super slow - for a "good" solution, either reimplement this approach
+# in a compiled language, or redesign it to leverage numpy/scipy rather than
+# loops.
+
 coords = [tuple(int(s.strip()) for s in l.strip().split(','))
           for l in sys.stdin.readlines()]
 xmax = max(x for x, y in coords)
@@ -25,44 +29,33 @@ def neighbourhood(x, y):
         l.append(grid[x+a, y+b])
     return l
 
-def preview():
-    for y in range(ymax+1):
-        for x in range(xmax+1):
-            v = grid[x, y]
-            if v == -1:
-                v = '.'
-            elif v == 0:
-                v = ' '
-            else:
-                v = chr(ord('a') - 1 + v)
-            print(v, end='')
-        print()
-    print()
-
 # Grow seed points gradually
 for r in range(R):
-    print(r, R)
     if np.all(grid != 0):
+        # we've determined the state of every tile; so we're done
         break
     new = grid.copy()
     for x, y in np.ndindex(grid.shape):
         if new[x, y] != 0:
+            # tile has already been claimed
             continue
         surrounds = {v for v in neighbourhood(x, y)
                      if v != 0}
+        # If there's a unique closest point, it claims this tile
         if len(surrounds) == 1:
             new[x, y] = surrounds.pop()
+        # If there's more than one closest point, this tile becomes no-man's land
         elif len(surrounds) > 1:
             new[x, y] = -1
     grid = new
 
+# If you spend a while doing some taxicab geometry, you can prove that the
+# infinite regions are exactly those that touch the boundary of the bounding
+# rectangle:
 boundary = np.concatenate((grid[0, :], grid[-1, :],
                            grid[:, 0], grid[:, -1]))
 infinite = set(boundary)
 vals, counts = np.unique(grid, return_counts=True)
 count = max(c for v, c in zip(vals, counts)
             if v not in infinite)
-print()
 print(count)
-
-#print(grid)
